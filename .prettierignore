@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+data/
+repos/
+package-lock.json
+.env
+.env.*
+!.env.example
