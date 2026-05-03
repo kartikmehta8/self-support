@@ -49,13 +49,21 @@ describe("SqliteTicketRepository", () => {
     const updated = await repository.update(ticket.id, {
       status: "answered",
       aiAnswer: "answer",
+      discordThreadId: "discord-thread",
+      lastDiscordActivityNotifiedAt: "2026-05-02T01:00:00.000Z",
+      slackChannelId: "slack-channel",
       slackThreadTs: "123.456"
     });
+    const foundBySlackThread = await repository.findBySlackThread("slack-channel", "123.456");
+    const foundByDiscordThread = await repository.findByDiscordThread("discord-thread");
 
     assert.equal(found?.id, ticket.id);
     assert.equal(found?.discordThreadId, undefined);
+    assert.equal(foundBySlackThread?.id, ticket.id);
+    assert.equal(foundByDiscordThread?.id, ticket.id);
     assert.equal(updated.status, "answered");
     assert.equal(updated.aiAnswer, "answer");
+    assert.equal(updated.lastDiscordActivityNotifiedAt, "2026-05-02T01:00:00.000Z");
     assert.equal(updated.slackThreadTs, "123.456");
     await assert.rejects(() => repository.update("missing", { status: "closed" }), /not found/);
   });
@@ -110,24 +118,33 @@ describe("HTTP API server", () => {
       {
         postHumanAnswer: async (_ticket: unknown, answer: string) => discordPosts.push(answer)
       } as never,
+      { postThreadUpdate: async () => undefined } as never,
       makeLogger()
     );
 
     try {
       const health = await fetch("http://127.0.0.1:4197/health");
-      const usage = await postCommand(4197, "command=/self-answer&text=");
-      const missing = await postCommand(4197, "command=/self-answer&text=missing+hello");
+      const noThread = await postCommand(4197, "command=/self-answer&text=ship+it");
+      const usage = await postCommand(
+        4197,
+        "command=/self-answer&text=&channel_id=slack-channel&thread_ts=111.222"
+      );
+      const missing = await postCommand(
+        4197,
+        "command=/self-answer&text=ship+it&channel_id=slack-channel&thread_ts=missing"
+      );
       const answer = await postCommand(
         4197,
-        "command=/self-answer&text=SELF-9F09D74C+ship+it&user_name=kartik"
+        "command=/self-answer&text=ship+it&user_name=kartik&channel_id=slack-channel&thread_ts=111.222"
       );
       const unknown = await postCommand(4197, "command=/other&text=hello");
 
       assert.deepEqual(await health.json(), { ok: true });
+      assert.match(noThread.text, /Mention the bot/);
       assert.match(usage.text, /Usage/);
-      assert.match(missing.text, /was not found/);
+      assert.match(missing.text, /No support ticket is linked/);
       assert.match(answer.text, /Posted answer/);
-      assert.match(discordPosts[0] ?? "", /Posted from Slack by kartik/);
+      assert.equal(discordPosts[0], "ship it");
       assert.match(unknown.text, /Unknown command/);
     } finally {
       await server.stop();
@@ -141,6 +158,10 @@ function makeApiRepository(): TicketRepository {
   return {
     create: async ({ ticket: created }) => created,
     findById: async (id) => (id === ticket.id ? ticket : undefined),
+    findBySlackThread: async (channelId, threadTs) =>
+      channelId === ticket.slackChannelId && threadTs === ticket.slackThreadTs ? ticket : undefined,
+    findByDiscordThread: async (threadId) =>
+      threadId === ticket.discordThreadId ? ticket : undefined,
     update: async (_id, update) => ({ ...ticket, ...update })
   };
 }
