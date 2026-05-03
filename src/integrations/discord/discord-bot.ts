@@ -7,12 +7,14 @@ import type { AppLogger } from "../../utils/logger.js";
 import type { SlackNotifier } from "../slack/slack-notifier.js";
 import { DiscordInteractionHandler } from "./discord-interactions.js";
 import { DiscordTicketService } from "./discord-ticket-service.js";
+import { DiscordThreadActivityNotifier } from "./discord-thread-activity.js";
 
 /**
  * Discord adapter for ticket intake and support thread messaging.
  */
 export class DiscordBot {
   private readonly client: Client;
+  private readonly activity: DiscordThreadActivityNotifier;
   private readonly interactions: DiscordInteractionHandler;
   private readonly tickets: DiscordTicketService;
 
@@ -36,6 +38,7 @@ export class DiscordBot {
       intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
     });
     this.tickets = new DiscordTicketService(this.client, this.config);
+    this.activity = new DiscordThreadActivityNotifier(repository, slack, this.logger);
     this.interactions = new DiscordInteractionHandler(
       this.config,
       repository,
@@ -75,6 +78,14 @@ export class DiscordBot {
       }
     });
 
+    this.client.on(Events.MessageCreate, async (message) => {
+      try {
+        await this.activity.handleMessage(message);
+      } catch (error) {
+        this.logger.error({ error }, "Discord thread activity mirror failed");
+      }
+    });
+
     await this.client.login(this.config.discord.token);
   }
 
@@ -110,13 +121,13 @@ export class DiscordBot {
   }
 
   /**
-   * Posts a human answer into the linked Discord thread.
+   * Posts a human answer into the linked Discord thread without extra bot copy.
    *
    * @param ticket Ticket with Discord thread metadata.
    * @param answer Human-provided answer.
    * @returns Promise that resolves after posting.
    */
   async postHumanAnswer(ticket: Ticket, answer: string): Promise<void> {
-    await this.tickets.postThreadMessage(ticket, `### Team answer for ${ticket.id}\n${answer}`);
+    await this.tickets.postThreadMessage(ticket, answer);
   }
 }
