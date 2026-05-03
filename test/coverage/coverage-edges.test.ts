@@ -33,7 +33,8 @@ describe("coverage edge paths", () => {
     const service = new AnswerService(
       { generate: async (value: string) => ((prompt = value), { text: "answer" }) } as never,
       { search: async () => [] } as never,
-      makeLogger()
+      makeLogger(),
+      makeConfig()
     );
 
     await service.answerTicket(

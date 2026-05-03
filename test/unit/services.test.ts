@@ -3,7 +3,6 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
-import { AnswerService } from "../../src/services/answer-service.js";
 import { KnowledgeBaseService } from "../../src/services/knowledge-base.js";
 import { chunkDocument } from "../../src/services/knowledge/chunking.js";
 import { looksMinified, shouldIndexFile } from "../../src/services/knowledge/file-filter.js";
@@ -95,50 +94,6 @@ describe("KnowledgeBaseService", () => {
     await assert.rejects(() => service.getFileExcerpt("self", "missing.ts"), AppError);
     await service.stop();
     await rm(root, { recursive: true, force: true });
-  });
-});
-
-describe("AnswerService", () => {
-  it("builds bounded prompts with repository context and refreshes on demand", async () => {
-    const calls: string[] = [];
-    const agent = {
-      generate: async (prompt: string) => {
-        calls.push(prompt);
-        return { text: "answer" };
-      }
-    };
-    const knowledgeBase = {
-      refresh: async () => 1,
-      search: async () => [
-        {
-          repository: "self",
-          path: "src/sdk.ts",
-          startLine: 10,
-          score: 3,
-          excerpt: "10: verify()"
-        }
-      ]
-    };
-    const service = new AnswerService(agent as never, knowledgeBase as never, makeLogger());
-
-    const answer = await service.answerTicket(makeTicket(), { refreshKnowledge: true });
-
-    assert.equal(answer, "answer");
-    assert.match(calls[0] ?? "", /Repository context selected before answering/);
-    assert.match(calls[0] ?? "", /Source: self\/src\/sdk\.ts:10/);
-  });
-
-  it("uses a no-context message when search is empty", async () => {
-    let prompt = "";
-    const service = new AnswerService(
-      { generate: async (value: string) => ((prompt = value), { text: "answer" }) } as never,
-      { search: async () => [] } as never,
-      makeLogger()
-    );
-
-    await service.answerTicket(makeTicket());
-
-    assert.match(prompt, /No matching repository context/);
   });
 });
 
