@@ -43,7 +43,7 @@ describe("DiscordInteractionHandler", () => {
     await handler.handleCommand(commandInteraction("other", ["admin"], replies));
 
     assert.equal(replies[0], "Only support admins can post the ticket panel.");
-    assert.match(sent[0] ?? "", /Self Support/);
+    assert.match(sent[0] ?? "", /Need help with Self/);
     assert.match(replies[1] ?? "", /Posted the support panel/);
   });
 

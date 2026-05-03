@@ -47,7 +47,6 @@ export class DiscordInteractionHandler {
     const channel = await this.tickets.fetchSupportChannel();
     await channel.send({
       content: [
-        "### Self Support",
         "Need help with Self? Open a ticket and include the details we need to debug it quickly."
       ].join("\n"),
       flags: MessageFlags.SuppressEmbeds,
