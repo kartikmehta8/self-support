@@ -1,4 +1,5 @@
 import type { Agent } from "@mastra/core/agent";
+import type { AppConfig } from "../config/env.js";
 import type { Ticket } from "../domain/ticket.js";
 import type { KnowledgeBaseService, SearchResult } from "./knowledge-base.js";
 import type { AppLogger } from "../utils/logger.js";
@@ -11,6 +12,7 @@ const MAX_TICKET_FIELD_CHARS = 4_000;
 const MAX_SEARCH_QUERY_CHARS = 6_000;
 const MAX_REPOSITORY_CONTEXT_CHARS = 16_000;
 const MAX_PROMPT_CHARS = 28_000;
+type RepositoryWebUrls = Record<SearchResult["repository"], string>;
 
 /**
  * Generates support answers with the Mastra support agent.
@@ -22,12 +24,21 @@ export class AnswerService {
    * @param agent Mastra support agent.
    * @param knowledgeBase Searchable repository context.
    * @param logger Application logger.
+   * @param config Application configuration.
    */
+  private readonly repositoryWebUrls: RepositoryWebUrls;
+
   constructor(
     private readonly agent: Agent,
     private readonly knowledgeBase: KnowledgeBaseService,
-    private readonly logger: AppLogger
-  ) {}
+    private readonly logger: AppLogger,
+    config: Pick<AppConfig, "knowledge">
+  ) {
+    this.repositoryWebUrls = {
+      self: toRepositoryWebUrl(config.knowledge.selfRepoUrl),
+      "self-docs": toRepositoryWebUrl(config.knowledge.selfDocsRepoUrl)
+    };
+  }
 
   /**
    * Generates an answer for a ticket.
@@ -67,7 +78,10 @@ export class AnswerService {
         "Do not explore the repo broadly.",
         "Use additional tools only if the selected snippets are not enough to answer this exact ticket.",
         "If using tools, perform at most 2 focused searches and read at most 2 small file excerpts.",
-        "Cite relevant snippets as `self-docs/path.md:line` or `self/path.ts:line` when making implementation claims.",
+        "When making implementation claims, cite the relevant absolute Source URL from the repository context or tool result.",
+        "If you reference any repository file, use an absolute GitHub URL instead of only `self/path.ts:line` or `self-docs/path.md:line`.",
+        "Always end with a `Resources` section when any useful links are available.",
+        "In `Resources`, include relevant user-provided URLs plus absolute GitHub URLs for referenced code or docs files.",
         "If the context does not prove the answer, say what is missing and ask a core dev to review instead of guessing.",
         "Include likely causes, diagnostic steps, and code snippets where useful."
       ].join(" ")
@@ -103,17 +117,34 @@ export class AnswerService {
       return "No matching repository context was found in the current local index.";
     }
 
-    return limitText(results.map(formatSearchResult).join("\n\n"), MAX_REPOSITORY_CONTEXT_CHARS);
+    return limitText(
+      results.map((result) => this.formatSearchResult(result)).join("\n\n"),
+      MAX_REPOSITORY_CONTEXT_CHARS
+    );
+  }
+
+  private formatSearchResult(result: SearchResult): string {
+    return [
+      `Source: ${result.repository}/${result.path}:${result.startLine}`,
+      `Source URL: ${this.formatRepositoryUrl(result)}`,
+      "```",
+      result.excerpt,
+      "```"
+    ].join("\n");
+  }
+
+  private formatRepositoryUrl(result: SearchResult): string {
+    return `${this.repositoryWebUrls[result.repository]}/blob/main/${result.path}#L${result.startLine}`;
   }
 }
 
-function formatSearchResult(result: SearchResult): string {
-  return [
-    `Source: ${result.repository}/${result.path}:${result.startLine}`,
-    "```",
-    result.excerpt,
-    "```"
-  ].join("\n");
+function toRepositoryWebUrl(repoUrl: string): string {
+  const sshMatch = repoUrl.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
+  if (sshMatch) {
+    return `https://${sshMatch[1]}/${sshMatch[2]}`;
+  }
+
+  return repoUrl.replace(/\.git$/, "");
 }
 
 function limitText(value: string, maxChars: number): string {

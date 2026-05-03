@@ -19,7 +19,7 @@ const queue = createSupportQueue(config, logger);
 const slack = new SlackNotifier(config, logger);
 const knowledgeBase = new KnowledgeBaseService(config, logger);
 const { supportAgent } = createMastraRuntime(config, knowledgeBase);
-const answerService = new AnswerService(supportAgent, knowledgeBase, logger);
+const answerService = new AnswerService(supportAgent, knowledgeBase, logger, config);
 const discord = new DiscordBot(config, repository, queue, slack, logger);
 const worker = new TicketAnswerWorker(repository, answerService, discord, slack, logger);
 
