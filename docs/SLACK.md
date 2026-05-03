@@ -150,7 +150,7 @@ https://abc123.ngrok-free.app/slack/events
 Usage:
 
 ```text
-@Self Helper Bot The issue is caused by...
+@Self Support The issue is caused by...
 ```
 
 Run this mention inside the mirrored Slack ticket thread. The app uses the Slack channel and thread timestamp to find the linked ticket, then posts the answer into the Discord thread.
@@ -206,7 +206,7 @@ You should see:
 6. Mention the bot with the final answer:
 
 ```text
-@Self Helper Bot Final answer from the team...
+@Self Support Final answer from the team...
 ```
 
 7. Confirm the answer appears in the Discord ticket thread.

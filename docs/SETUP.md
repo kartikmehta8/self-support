@@ -62,7 +62,7 @@ Expose `http://localhost:4111/slack/events` with ngrok or a public URL and set i
 Each Discord ticket is mirrored into `SLACK_SUPPORT_CHANNEL_ID`. Team members can discuss in the Slack thread and then mention the bot with the final answer:
 
 ```text
-@Self Helper Bot Your final answer for the Discord user
+@Self Support Your final answer for the Discord user
 ```
 
 Slack does not support slash commands from thread reply composers. The app mention event includes the Slack thread context, so the service can find the linked Discord ticket without requiring a ticket ID.
