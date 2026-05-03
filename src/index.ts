@@ -29,7 +29,7 @@ async function main(): Promise<void> {
   await knowledgeBase.start();
   await queue.start((job) => worker.handle(job));
   await discord.start();
-  apiServer = startApiServer(config, repository, discord, logger);
+  apiServer = startApiServer(config, repository, discord, slack, logger);
 }
 
 async function shutdown(signal: string): Promise<void> {
