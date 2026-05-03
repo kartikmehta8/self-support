@@ -28,6 +28,7 @@ export interface Ticket {
   humanAnswer?: string;
   createdAt: string;
   updatedAt: string;
+  lastDiscordActivityNotifiedAt?: string;
   resolvedAt?: string;
   closedAt?: string;
 }
@@ -39,6 +40,7 @@ export interface TicketUpdate {
   slackThreadTs?: string;
   aiAnswer?: string;
   humanAnswer?: string;
+  lastDiscordActivityNotifiedAt?: string;
   resolvedAt?: string;
   closedAt?: string;
 }

@@ -22,6 +22,23 @@ export interface TicketRepository {
   findById(id: string): Promise<Ticket | undefined>;
 
   /**
+   * Finds a ticket by its mirrored Slack thread.
+   *
+   * @param channelId Slack channel ID.
+   * @param threadTs Slack thread timestamp.
+   * @returns Ticket or undefined.
+   */
+  findBySlackThread(channelId: string, threadTs: string): Promise<Ticket | undefined>;
+
+  /**
+   * Finds a ticket by its Discord thread.
+   *
+   * @param threadId Discord thread ID.
+   * @returns Ticket or undefined.
+   */
+  findByDiscordThread(threadId: string): Promise<Ticket | undefined>;
+
+  /**
    * Applies a partial update.
    *
    * @param id Ticket ID.

@@ -34,6 +34,12 @@ export function makeDiscordRecords(): DiscordRecords {
       return ticket;
     },
     findById: async (id) => store.get(id),
+    findBySlackThread: async (channelId, threadTs) =>
+      [...store.values()].find(
+        (ticket) => ticket.slackChannelId === channelId && ticket.slackThreadTs === threadTs
+      ),
+    findByDiscordThread: async (threadId) =>
+      [...store.values()].find((ticket) => ticket.discordThreadId === threadId),
     update: async (id, update) => {
       const next = { ...(store.get(id) ?? makeTicket({ id })), ...update };
       store.set(id, next);
