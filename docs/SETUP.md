@@ -24,8 +24,8 @@ Fill these values:
 - `DISCORD_GUILD_ID`: guild used for command registration during testing.
 - `DISCORD_SUPPORT_CHANNEL_ID`: channel where support ticket threads are created.
 - `DISCORD_ADMIN_ROLE_IDS`: comma-separated Discord role IDs allowed to resolve, reopen, or close tickets.
-- `SLACK_BOT_TOKEN`: Slack bot token with `chat:write`, `commands`, `channels:read`, and `channels:history` as needed.
-- `SLACK_SIGNING_SECRET`: Slack app signing secret for slash command verification.
+- `SLACK_BOT_TOKEN`: Slack bot token with `chat:write`, `app_mentions:read`, `channels:read`, and `channels:history` as needed.
+- `SLACK_SIGNING_SECRET`: Slack app signing secret for request verification.
 - `SLACK_SUPPORT_CHANNEL_ID`: internal team channel where mirrored ticket threads are posted.
 
 Detailed key extraction guides:
@@ -47,24 +47,25 @@ npm run register:discord
 npm run dev
 ```
 
-Expose `http://localhost:4111/slack/commands` with ngrok or a public URL and set it as the Slack slash command request URL.
+Expose `http://localhost:4111/slack/events` with ngrok or a public URL and set it as the Slack Events API request URL.
 
 ## 5. Discord workflow
 
 - An admin runs `/support-panel` once to post a persistent **Open Ticket** button in the support channel.
 - Users click **Open Ticket** to open a modal with title, problem details, expected behavior, environment, and links.
 - The bot creates a private support thread under `DISCORD_SUPPORT_CHANNEL_ID`, adds only the requester, mirrors the ticket to Slack, queues the Mastra answer, and posts the answer in the Discord thread.
+- New user activity in the Discord ticket thread is mirrored back into Slack at most once per ticket per hour, so the team sees fresh replies or attachments without noisy repeated pings.
 - Admin buttons let the team mark tickets resolved, reopen them, close the Discord thread, or request a refreshed answer.
 
 ## 6. Slack workflow
 
-Each Discord ticket is mirrored into `SLACK_SUPPORT_CHANNEL_ID`. Team members can discuss in the Slack thread and then run:
+Each Discord ticket is mirrored into `SLACK_SUPPORT_CHANNEL_ID`. Team members can discuss in the Slack thread and then mention the bot with the final answer:
 
 ```text
-/self-answer TICKET_ID Your final answer for the Discord user
+@Self Helper Bot Your final answer for the Discord user
 ```
 
-The service posts that answer back into the linked Discord thread.
+Slack does not support slash commands from thread reply composers. The app mention event includes the Slack thread context, so the service can find the linked Discord ticket without requiring a ticket ID.
 
 ## 7. Repository context
 

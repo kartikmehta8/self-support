@@ -47,7 +47,7 @@ Keep this secret. If it is pasted into chat, committed, or exposed, reset it in 
 
 ## 4. Gateway Intents
 
-This app currently uses slash commands, modals, buttons, guilds, channels, and threads. It does not need the privileged **Message Content Intent** for the planned workflow.
+This app uses slash commands, modals, buttons, guilds, channels, threads, and message events inside ticket threads. It only mirrors that new activity happened, and does not read normal message content, so it does not need the privileged **Message Content Intent**.
 
 In **Bot > Privileged Gateway Intents**, leave these off unless you later add features that read normal message content:
 
@@ -55,7 +55,7 @@ In **Bot > Privileged Gateway Intents**, leave these off unless you later add fe
 - Server Members Intent
 - Message Content Intent
 
-If you later add automatic Discord thread-message ingestion, enable **Message Content Intent** and update the Discord client intents in code.
+If you later add features that inspect the actual text of Discord messages, enable **Message Content Intent** and update the Discord client intents in code.
 
 ## 5. Invite The Bot To Your Server
 
