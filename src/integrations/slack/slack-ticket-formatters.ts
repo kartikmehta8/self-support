@@ -15,7 +15,10 @@ const DETAIL_FIELDS: Array<{
   key: keyof TicketQuestion;
   label: string;
 }> = [
+  { key: "productArea", label: "Type" },
+  { key: "mobileAppVersion", label: "Mobile app version" },
   { key: "problem", label: "Problem" },
+  { key: "imageUrl", label: "Screenshot / image" },
   { key: "expectedBehavior", label: "Expected behavior" },
   { key: "environment", label: "Environment" },
   { key: "links", label: "References" }

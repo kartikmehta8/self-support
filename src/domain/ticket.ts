@@ -9,6 +9,9 @@ export type TicketStatus =
 export interface TicketQuestion {
   title: string;
   problem: string;
+  productArea?: string;
+  mobileAppVersion?: string;
+  imageUrl?: string;
   expectedBehavior?: string;
   environment?: string;
   links?: string;

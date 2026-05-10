@@ -2,7 +2,8 @@ import {
   MessageFlags,
   type ButtonInteraction,
   type ChatInputCommandInteraction,
-  type ModalSubmitInteraction
+  type ModalSubmitInteraction,
+  type StringSelectMenuInteraction
 } from "discord.js";
 import type { AppConfig } from "../../config/env.js";
 import type { Ticket, TicketQuestion } from "../../domain/ticket.js";
@@ -12,8 +13,14 @@ import { createTicketId } from "../../utils/id.js";
 import type { SlackNotifier } from "../slack/slack-notifier.js";
 import {
   buildSupportModal,
+  mobileAppVersionActionRow,
+  mobileAppVersionLabel,
   optionalField,
-  SUPPORT_MODAL_ID,
+  parseSupportModalContext,
+  productAreaLabel,
+  SUPPORT_MOBILE_VERSION_SELECT_ID,
+  SUPPORT_PRODUCT_AREA_SELECT_ID,
+  supportProductAreaActionRow,
   supportPanelActionRow
 } from "./discord-components.js";
 import { isSupportAdmin } from "./discord-permissions.js";
@@ -59,12 +66,13 @@ export class DiscordInteractionHandler {
   }
 
   async handleModal(interaction: ModalSubmitInteraction): Promise<void> {
-    if (interaction.customId !== SUPPORT_MODAL_ID) {
+    const modalContext = parseSupportModalContext(interaction.customId);
+    if (!modalContext) {
       return;
     }
 
     await interaction.deferReply({ ephemeral: true });
-    const ticket = await this.createTicketFromModal(interaction);
+    const ticket = await this.createTicketFromModal(interaction, modalContext);
     await this.repository.create({ ticket });
     const thread = await this.tickets.createTicketThread(ticket);
     const withThread = await this.repository.update(ticket.id, { discordThreadId: thread.id });
@@ -89,7 +97,11 @@ export class DiscordInteractionHandler {
     }
 
     if (action === "open") {
-      await interaction.showModal(buildSupportModal());
+      await interaction.reply({
+        content: "Choose what this ticket is about.",
+        flags: MessageFlags.Ephemeral,
+        components: [supportProductAreaActionRow()]
+      });
       return;
     }
 
@@ -107,6 +119,37 @@ export class DiscordInteractionHandler {
 
     await interaction.deferReply({ ephemeral: true });
     await this.handleAdminAction(interaction, action, ticketId);
+  }
+
+  async handleSelectMenu(interaction: StringSelectMenuInteraction): Promise<void> {
+    if (interaction.customId === SUPPORT_PRODUCT_AREA_SELECT_ID) {
+      const productArea = productAreaLabel(interaction.values[0] ?? "");
+      if (!productArea) {
+        return;
+      }
+
+      if (productArea === "Mobile App") {
+        await interaction.update({
+          content: "Choose the mobile app version.",
+          components: [mobileAppVersionActionRow()]
+        });
+        return;
+      }
+
+      await interaction.showModal(buildSupportModal({ productArea }));
+      return;
+    }
+
+    if (interaction.customId === SUPPORT_MOBILE_VERSION_SELECT_ID) {
+      const mobileAppVersion = mobileAppVersionLabel(interaction.values[0] ?? "");
+      if (!mobileAppVersion) {
+        return;
+      }
+
+      await interaction.showModal(
+        buildSupportModal({ productArea: "Mobile App", mobileAppVersion })
+      );
+    }
   }
 
   private async handleAdminAction(
@@ -167,13 +210,16 @@ export class DiscordInteractionHandler {
     }
   }
 
-  private async createTicketFromModal(interaction: ModalSubmitInteraction): Promise<Ticket> {
+  private async createTicketFromModal(
+    interaction: ModalSubmitInteraction,
+    modalContext: { productArea?: string; mobileAppVersion?: string }
+  ): Promise<Ticket> {
     const question: TicketQuestion = {
       title: interaction.fields.getTextInputValue("title"),
+      productArea: modalContext.productArea,
+      mobileAppVersion: modalContext.mobileAppVersion,
       problem: interaction.fields.getTextInputValue("problem"),
-      expectedBehavior: optionalField(interaction, "expectedBehavior"),
-      environment: optionalField(interaction, "environment"),
-      links: optionalField(interaction, "links")
+      imageUrl: optionalField(interaction, "imageUrl")
     };
 
     const now = new Date().toISOString();

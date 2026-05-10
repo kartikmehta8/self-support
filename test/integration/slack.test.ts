@@ -47,9 +47,9 @@ describe("Slack ticket formatting", () => {
     const payload = formatTicketDetailsMessage(makeTicket());
 
     assert.match(payload.text, /Problem\nproblem/);
-    assert.match(payload.text, /Expected behavior\nexpected/);
-    assert.match(payload.text, /Environment\nstaging/);
-    assert.match(payload.text, /References\nhttps:\/\/self\.xyz/);
+    assert.match(payload.text, /Type\nMobile App/);
+    assert.match(payload.text, /Mobile app version\n1\.2\.x/);
+    assert.match(payload.text, /Screenshot \/ image\nhttps:\/\/self\.xyz\/screenshot\.png/);
     assert.equal(payload.blocks.length, 4);
   });
 
@@ -58,10 +58,10 @@ describe("Slack ticket formatting", () => {
       makeTicket({
         question: {
           title: "Title",
+          productArea: "   ",
+          mobileAppVersion: undefined,
           problem: "problem",
-          expectedBehavior: "   ",
-          environment: undefined,
-          links: ""
+          imageUrl: ""
         }
       })
     );

@@ -3,9 +3,13 @@ import { describe, it } from "node:test";
 import {
   adminActionRow,
   buildSupportModal,
+  buildSupportModalId,
   formatTicketIntro,
+  mobileAppVersionActionRow,
   optionalField,
+  parseSupportModalContext,
   splitDiscordMessage,
+  supportProductAreaActionRow,
   supportPanelActionRow,
   SUPPORT_MODAL_ID
 } from "../../src/integrations/discord/discord-components.js";
@@ -16,14 +20,40 @@ interface ComponentJson {
   components: Array<{ custom_id?: string }>;
 }
 
+interface ModalJson {
+  custom_id?: string;
+  components: Array<{ components: Array<{ custom_id?: string }> }>;
+}
+
 describe("Discord components", () => {
-  it("builds support panel and modal components", () => {
+  it("builds support panel, dropdowns, and modal components", () => {
     const row = supportPanelActionRow().toJSON() as ComponentJson;
-    const modal = buildSupportModal().toJSON();
+    const productAreaRow = supportProductAreaActionRow().toJSON() as ComponentJson;
+    const mobileVersionRow = mobileAppVersionActionRow().toJSON() as ComponentJson;
+    const modal = buildSupportModal({ productArea: "Self SDK" }).toJSON() as ModalJson;
 
     assert.equal(row.components[0]?.custom_id, "support:open");
-    assert.equal(modal.custom_id, SUPPORT_MODAL_ID);
-    assert.equal(modal.components.length, 5);
+    assert.equal(productAreaRow.components[0]?.custom_id, "support:product-area");
+    assert.equal(mobileVersionRow.components[0]?.custom_id, "support:mobile-version");
+    assert.match(modal.custom_id ?? "", new RegExp(`^${SUPPORT_MODAL_ID}:`));
+    assert.equal(modal.components.length, 3);
+    assert.deepEqual(
+      modal.components.map((row) => row.components[0]?.custom_id),
+      ["title", "problem", "imageUrl"]
+    );
+  });
+
+  it("round-trips support modal context through custom IDs", () => {
+    const customId = buildSupportModalId({
+      productArea: "Mobile App",
+      mobileAppVersion: "1.2.x"
+    });
+
+    assert.deepEqual(parseSupportModalContext(customId), {
+      productArea: "Mobile App",
+      mobileAppVersion: "1.2.x"
+    });
+    assert.equal(parseSupportModalContext("other"), undefined);
   });
 
   it("formats optional modal fields", () => {
@@ -39,10 +69,18 @@ describe("Discord components", () => {
 
   it("formats ticket intros and splits long Discord messages", () => {
     const intro = formatTicketIntro(makeTicket());
+    const minimalIntro = formatTicketIntro(
+      makeTicket({ question: { title: "Minimal", problem: "just problem" } })
+    );
     const chunks = splitDiscordMessage(`first\n${"a".repeat(2_000)}`);
 
     assert.match(intro, /### SELF-9F09D74C: Title/);
-    assert.match(intro, /\*\*Environment\*\*\nstaging/);
+    assert.match(intro, /\*\*Type\*\*\nMobile App/);
+    assert.match(intro, /\*\*Mobile app version\*\*\n1\.2\.x/);
+    assert.match(intro, /\*\*Screenshot \/ image\*\*\nhttps:\/\/self\.xyz\/screenshot\.png/);
+    assert.doesNotMatch(minimalIntro, /\*\*Type\*\*/);
+    assert.doesNotMatch(minimalIntro, /\*\*Mobile app version\*\*/);
+    assert.doesNotMatch(minimalIntro, /\*\*Screenshot \/ image\*\*/);
     assert.equal(splitDiscordMessage("short")[0], "short");
     assert.equal(chunks.length, 2);
     assert.equal(

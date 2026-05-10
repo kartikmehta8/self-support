@@ -58,9 +58,18 @@ export class AnswerService {
       `Title: ${ticket.question.title}`,
       `Requester: ${ticket.requesterTag}`,
       "",
+      ticket.question.productArea
+        ? `Type: ${limitText(ticket.question.productArea, MAX_TICKET_FIELD_CHARS)}\n`
+        : "",
+      ticket.question.mobileAppVersion
+        ? `Mobile app version:\n${limitText(ticket.question.mobileAppVersion, MAX_TICKET_FIELD_CHARS)}\n`
+        : "",
       "Problem:",
       limitText(ticket.question.problem, MAX_TICKET_FIELD_CHARS),
       "",
+      ticket.question.imageUrl
+        ? `Screenshot or image:\n${limitText(ticket.question.imageUrl, MAX_TICKET_FIELD_CHARS)}\n`
+        : "",
       ticket.question.expectedBehavior
         ? `Expected behavior:\n${limitText(ticket.question.expectedBehavior, MAX_TICKET_FIELD_CHARS)}\n`
         : "",
@@ -104,7 +113,10 @@ export class AnswerService {
   private async getRepositoryContext(ticket: Ticket): Promise<string> {
     const query = [
       ticket.question.title,
+      ticket.question.productArea,
+      ticket.question.mobileAppVersion,
       ticket.question.problem,
+      ticket.question.imageUrl,
       ticket.question.expectedBehavior,
       ticket.question.environment,
       ticket.question.links

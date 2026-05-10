@@ -66,6 +66,8 @@ export class DiscordBot {
           await this.interactions.handleModal(interaction);
         } else if (interaction.isButton()) {
           await this.interactions.handleButton(interaction);
+        } else if (interaction.isStringSelectMenu()) {
+          await this.interactions.handleSelectMenu(interaction);
         }
       } catch (error) {
         this.logger.error({ error }, "Discord interaction failed");

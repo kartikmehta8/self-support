@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ModalBuilder,
+  StringSelectMenuBuilder,
   TextInputBuilder,
   TextInputStyle,
   type ModalSubmitInteraction
@@ -10,6 +11,28 @@ import {
 import type { Ticket } from "../../domain/ticket.js";
 
 export const SUPPORT_MODAL_ID = "support-ticket-modal";
+export const SUPPORT_PRODUCT_AREA_SELECT_ID = "support:product-area";
+export const SUPPORT_MOBILE_VERSION_SELECT_ID = "support:mobile-version";
+
+export type ProductAreaValue = "self_sdk" | "mobile_app";
+export type MobileAppVersionValue = "latest" | "1_2_x" | "1_1_x" | "not_sure";
+
+export interface SupportModalContext {
+  productArea?: string;
+  mobileAppVersion?: string;
+}
+
+const PRODUCT_AREA_LABELS: Record<ProductAreaValue, string> = {
+  self_sdk: "Self SDK",
+  mobile_app: "Mobile App"
+};
+
+const MOBILE_APP_VERSION_LABELS: Record<MobileAppVersionValue, string> = {
+  latest: "Latest",
+  "1_2_x": "1.2.x",
+  "1_1_x": "1.1.x",
+  not_sure: "Not sure"
+};
 
 export function supportPanelActionRow(): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -20,29 +43,89 @@ export function supportPanelActionRow(): ActionRowBuilder<ButtonBuilder> {
   );
 }
 
-export function buildSupportModal(): ModalBuilder {
+export function supportProductAreaActionRow(): ActionRowBuilder<StringSelectMenuBuilder> {
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(SUPPORT_PRODUCT_AREA_SELECT_ID)
+      .setPlaceholder("Choose Self SDK or Mobile App")
+      .addOptions(
+        {
+          label: PRODUCT_AREA_LABELS.self_sdk,
+          value: "self_sdk",
+          description: "SDK, proof generation, integration, or verification code"
+        },
+        {
+          label: PRODUCT_AREA_LABELS.mobile_app,
+          value: "mobile_app",
+          description: "Self mobile app behavior, install, scan, or account issue"
+        }
+      )
+  );
+}
+
+export function mobileAppVersionActionRow(): ActionRowBuilder<StringSelectMenuBuilder> {
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(SUPPORT_MOBILE_VERSION_SELECT_ID)
+      .setPlaceholder("Choose mobile app version")
+      .addOptions(
+        { label: MOBILE_APP_VERSION_LABELS.latest, value: "latest" },
+        { label: MOBILE_APP_VERSION_LABELS["1_2_x"], value: "1_2_x" },
+        { label: MOBILE_APP_VERSION_LABELS["1_1_x"], value: "1_1_x" },
+        { label: MOBILE_APP_VERSION_LABELS.not_sure, value: "not_sure" }
+      )
+  );
+}
+
+export function productAreaLabel(value: string): string | undefined {
+  return PRODUCT_AREA_LABELS[value as ProductAreaValue];
+}
+
+export function mobileAppVersionLabel(value: string): string | undefined {
+  return MOBILE_APP_VERSION_LABELS[value as MobileAppVersionValue];
+}
+
+export function buildSupportModal(context: SupportModalContext = {}): ModalBuilder {
   return new ModalBuilder()
-    .setCustomId(SUPPORT_MODAL_ID)
+    .setCustomId(buildSupportModalId(context))
     .setTitle("Open a Self support ticket")
     .addComponents(
       textInputRow("title", "Title", TextInputStyle.Short, true, "Unable to verify with Self SDK"),
-      textInputRow("problem", "What problem are you facing?", TextInputStyle.Paragraph, true),
-      textInputRow("expectedBehavior", "Expected behavior", TextInputStyle.Paragraph, false),
       textInputRow(
-        "environment",
-        "Environment",
+        "problem",
+        "Explain the problem",
         TextInputStyle.Paragraph,
-        false,
-        "SDK version, app platform, chain, browser"
+        true,
+        "What happened? What did you expect? Add SDK version, platform, or device if useful."
       ),
       textInputRow(
-        "links",
-        "Links or references",
+        "imageUrl",
+        "Screenshot or image link",
         TextInputStyle.Paragraph,
         false,
-        "Repo, transaction, logs, screenshots"
+        "Paste an image URL, or attach the image in the ticket thread after it opens."
       )
     );
+}
+
+export function buildSupportModalId(context: SupportModalContext): string {
+  return [
+    SUPPORT_MODAL_ID,
+    encodeURIComponent(context.productArea ?? ""),
+    encodeURIComponent(context.mobileAppVersion ?? "")
+  ].join(":");
+}
+
+export function parseSupportModalContext(customId: string): SupportModalContext | undefined {
+  const [modalId, encodedProductArea = "", encodedMobileAppVersion = ""] = customId.split(":");
+  if (modalId !== SUPPORT_MODAL_ID) {
+    return undefined;
+  }
+
+  return {
+    productArea: decodeURIComponent(encodedProductArea) || undefined,
+    mobileAppVersion: decodeURIComponent(encodedMobileAppVersion) || undefined
+  };
 }
 
 export function optionalField(interaction: ModalSubmitInteraction, id: string): string | undefined {
@@ -76,13 +159,19 @@ export function formatTicketIntro(ticket: Ticket): string {
     `### ${ticket.id}: ${ticket.question.title}`,
     `Opened by <@${ticket.requesterId}>`,
     "",
+    ticket.question.productArea ? `**Type**\n${ticket.question.productArea}\n` : undefined,
+    ticket.question.mobileAppVersion
+      ? `**Mobile app version**\n${ticket.question.mobileAppVersion}\n`
+      : undefined,
     "**Problem**",
     ticket.question.problem,
+    ticket.question.imageUrl ? `\n**Screenshot / image**\n${ticket.question.imageUrl}` : undefined,
     ticket.question.expectedBehavior
       ? `\n**Expected behavior**\n${ticket.question.expectedBehavior}`
       : undefined,
     ticket.question.environment ? `\n**Environment**\n${ticket.question.environment}` : undefined,
-    ticket.question.links ? `\n**Links**\n${ticket.question.links}` : undefined
+    ticket.question.links ? `\n**Links**\n${ticket.question.links}` : undefined,
+    "\nYou can attach screenshots or recordings in this private thread if you did not include an image link."
   ]
     .filter(Boolean)
     .join("\n");

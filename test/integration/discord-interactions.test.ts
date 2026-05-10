@@ -2,24 +2,69 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AppConfig } from "../../src/config/env.js";
 import { DiscordInteractionHandler } from "../../src/integrations/discord/discord-interactions.js";
-import { SUPPORT_MODAL_ID } from "../../src/integrations/discord/discord-components.js";
+import {
+  buildSupportModalId,
+  SUPPORT_MOBILE_VERSION_SELECT_ID,
+  SUPPORT_PRODUCT_AREA_SELECT_ID
+} from "../../src/integrations/discord/discord-components.js";
 import { makeConfig } from "../support/helpers.js";
 import { makeDiscordRecords } from "../support/discord-fakes.js";
 
 describe("DiscordInteractionHandler", () => {
-  it("opens the support modal and ignores unrelated buttons", async () => {
-    const shown: string[] = [];
+  it("opens the support dropdown prompt and ignores unrelated buttons", async () => {
+    const replies: string[] = [];
     const handler = makeHandler();
 
     await handler.handleButton({
       customId: "support:open",
+      reply: async ({ content }: { content: string }) => replies.push(content)
+    } as never);
+    await handler.handleButton({ customId: "other:open" } as never);
+
+    assert.deepEqual(replies, ["Choose what this ticket is about."]);
+  });
+
+  it("opens the support modal from SDK and mobile version dropdowns", async () => {
+    const shown: string[] = [];
+    const updates: string[] = [];
+    const handler = makeHandler();
+
+    await handler.handleSelectMenu({
+      customId: SUPPORT_PRODUCT_AREA_SELECT_ID,
+      values: ["self_sdk"],
       showModal: async (modal: { toJSON(): { custom_id?: string } }) => {
         shown.push(modal.toJSON().custom_id ?? "");
       }
     } as never);
-    await handler.handleButton({ customId: "other:open" } as never);
+    await handler.handleSelectMenu({
+      customId: SUPPORT_PRODUCT_AREA_SELECT_ID,
+      values: ["mobile_app"],
+      update: async ({ content }: { content: string }) => updates.push(content)
+    } as never);
+    await handler.handleSelectMenu({
+      customId: SUPPORT_MOBILE_VERSION_SELECT_ID,
+      values: ["1_2_x"],
+      showModal: async (modal: { toJSON(): { custom_id?: string } }) => {
+        shown.push(modal.toJSON().custom_id ?? "");
+      }
+    } as never);
+    await handler.handleSelectMenu({
+      customId: SUPPORT_PRODUCT_AREA_SELECT_ID,
+      values: ["unsupported"],
+      showModal: async () => shown.push("unexpected-product")
+    } as never);
+    await handler.handleSelectMenu({
+      customId: SUPPORT_MOBILE_VERSION_SELECT_ID,
+      values: ["unsupported"],
+      showModal: async () => shown.push("unexpected-version")
+    } as never);
+    await handler.handleSelectMenu({ customId: "other", values: ["self_sdk"] } as never);
 
-    assert.deepEqual(shown, [SUPPORT_MODAL_ID]);
+    assert.equal(updates[0], "Choose the mobile app version.");
+    assert.deepEqual(shown, [
+      buildSupportModalId({ productArea: "Self SDK" }),
+      buildSupportModalId({ productArea: "Mobile App", mobileAppVersion: "1.2.x" })
+    ]);
   });
 
   it("posts the support panel only for admins", async () => {
@@ -53,7 +98,7 @@ describe("DiscordInteractionHandler", () => {
     const replies: string[] = [];
 
     await handler.handleModal({
-      customId: SUPPORT_MODAL_ID,
+      customId: buildSupportModalId({ productArea: "Mobile App", mobileAppVersion: "1.2.x" }),
       guildId: "guild",
       user: { id: "user-1", tag: "kartikmehta" },
       fields: {
@@ -64,6 +109,13 @@ describe("DiscordInteractionHandler", () => {
     } as never);
 
     assert.equal(records.created.length, 1);
+    assert.deepEqual(records.created[0]?.question, {
+      title: "Title",
+      productArea: "Mobile App",
+      mobileAppVersion: "1.2.x",
+      problem: "problem",
+      imageUrl: "https://self.xyz/screenshot.png"
+    });
     assert.equal(records.slackMirrors.length, 1);
     assert.deepEqual(records.enqueued, [{ ticketId: records.created[0]?.id }]);
     assert.match(replies[0] ?? "", /Created support ticket SELF-/);
@@ -117,9 +169,7 @@ function modalValue(id: string): string {
   const values: Record<string, string> = {
     title: "Title",
     problem: "problem",
-    expectedBehavior: "",
-    environment: "",
-    links: ""
+    imageUrl: "https://self.xyz/screenshot.png"
   };
 
   return values[id] ?? "";

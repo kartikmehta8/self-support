@@ -26,10 +26,10 @@ export function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
     slackThreadTs: "111.222",
     question: {
       title: "Title",
+      productArea: "Mobile App",
+      mobileAppVersion: "1.2.x",
       problem: "problem",
-      expectedBehavior: "expected",
-      environment: "staging",
-      links: "https://self.xyz"
+      imageUrl: "https://self.xyz/screenshot.png"
     },
     createdAt: now,
     updatedAt: now,
