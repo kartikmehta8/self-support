@@ -52,7 +52,8 @@ Expose `http://localhost:4111/slack/events` with ngrok or a public URL and set i
 ## 5. Discord workflow
 
 - An admin runs `/support-panel` once to post a persistent **Open Ticket** button in the support channel.
-- Users click **Open Ticket** to open a modal with title, problem details, expected behavior, environment, and links.
+- Users click **Open Ticket**, choose Self SDK or Mobile App from a dropdown, choose a sample mobile app version when relevant, and then submit a modal with title, problem details, and an optional screenshot/image link.
+- Discord modals do not support direct file upload fields, so users can attach images in the private ticket thread after it opens.
 - The bot creates a private support thread under `DISCORD_SUPPORT_CHANNEL_ID`, adds only the requester, mirrors the ticket to Slack, queues the Mastra answer, and posts the answer in the Discord thread.
 - New user activity in the Discord ticket thread is mirrored back into Slack at most once per ticket per hour, so the team sees fresh replies or attachments without noisy repeated pings.
 - Admin buttons let the team mark tickets resolved, reopen them, close the Discord thread, or request a refreshed answer.

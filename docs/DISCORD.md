@@ -184,6 +184,6 @@ In Discord:
 3. Submit the modal.
 4. Confirm a new private thread opens for the requester.
 5. Confirm the bot posts the ticket details.
-6. Confirm links appear as normal text without Discord embed previews.
+6. Confirm image links appear as normal text without Discord embed previews, or attach an image directly in the private ticket thread.
 7. Confirm admin buttons appear.
 8. Click **Close** as an admin and confirm the thread is archived and locked. Regular users should not be able to send more messages after close.
